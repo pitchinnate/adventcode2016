@@ -9,7 +9,7 @@ const TRAP = '^';
 $grid = [
     1 => '.^^^.^.^^^.^.......^^.^^^^.^^^^..^^^^^.^.^^^..^^.^.^^..^.^..^^...^.^^.^^^...^^.^.^^^..^^^^.....^....',
 ];
-$max_levels = 40;
+$max_levels = 400000;
 $currentLevel = 1;
 
 while($currentLevel < $max_levels) {
