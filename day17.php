@@ -7,20 +7,22 @@
 $input = 'edjrjqaa';
 findPath($input,1,1,4,4,0);
 
+global $max_moves;
+
 function findPath($path,$xPos,$yPos,$sizeX,$sizeY,$count,$direction=null)
 {
-    //echo "path: $path xpos: $xPos ypos: $yPos count: $count direction: $direction \n";
+    global $max_moves;
     if(!is_null($direction)) {
         $path .= $direction;
     }
     $findMore = true;
     if($xPos == 4 && $yPos == 4) {
-        echo "I'm in the right spot, moves: $count path: $path \n\n";
+        //echo "I'm in the right spot, moves: $count path: $path \n\n";
         $findMore = false;
-    }
-    if($count > 12) {
-        echo "killed to many moves: $count path $path \n\n";
-        $findMore = false;
+        if($count > $max_moves) {
+            $max_moves = $count;
+            echo "max moves is now $max_moves \n";
+        }
     }
     if($findMore) {
         $directions = openDoors($xPos,$yPos,$path,$sizeX,$sizeY);
