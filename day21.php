@@ -1,18 +1,10 @@
 <?php
-$password = "abcde";
-$password = "abcdefgh";
-
-$input = "swap position 4 with position 0
-swap letter d with letter b
-reverse positions 0 through 4
-rotate left 1 step
-move position 1 to position 4
-move position 3 to position 0
-rotate based on position of letter b
-rotate based on position of letter d";
+$password = "fbgdceah";
 include('day21_input.php');
 
 $instructions = explode("\n",$input);
+$instructions = array_reverse($instructions);
+
 foreach($instructions as $instruction) {
     echo "$password \n";
     echo "$instruction \n";
@@ -76,8 +68,8 @@ function reverse($words,$letters)
 
 function move($words,$letters)
 {
-    $index1 = (int)$words[2];
-    $index2 = (int)$words[5];
+    $index1 = (int)$words[5];
+    $index2 = (int)$words[2];
     $value = $letters[$index1];
     array_splice($letters,$index1,1);
     array_splice($letters,$index2,0,$value);
@@ -89,20 +81,38 @@ function rotate($words,$letters)
 {
     if($words[1] == 'based') {
         $letter = $words[6];
-        $index = array_search($letter,$letters);
-        $count = 1 + $index;
-        if($index >= 4) {
-            $count++;
+//        print_r($letters);
+        //run once no matter what
+        $first = array_shift($letters);
+        array_push($letters,$first);
+//        print_r($letters);
+
+        $correct = false;
+        $count = 0;
+        while($correct == false) {
+            $index = array_search($letter,$letters);
+//            echo "index: $index count: $count \n";
+            if($index == $count) {
+                $correct = true;
+            } else {
+                $first = array_shift($letters);
+                array_push($letters,$first);
+//                print_r($letters);
+                $count++;
+                if($count == 4) {
+                    //needs to be run an extra time
+                    $first = array_shift($letters);
+                    array_push($letters,$first);
+                }
+            }
         }
-        for($x=1;$x<=$count;$x++) {
-            $last = array_pop($letters);
-            array_unshift($letters,$last);
-        }
+//        print_r($letters);
+//        die();
     } else {
         $direction = $words[1];
         $steps = (int)$words[2];
         for($x=1;$x<=$steps;$x++) {
-            if($direction == 'left') {
+            if($direction == 'right') {
                 $first = array_shift($letters);
                 array_push($letters,$first);
             } else {
