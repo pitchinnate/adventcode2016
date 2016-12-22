@@ -1,4 +1,9 @@
 <?php
+const TARGET_X = 33;
+const TARGET_Y = 0;
+const TARGET_DATA_SIZE = 73;
+const MAX_X = 33;
+const MAX_Y = 29;
 
 include('day22_input.php');
 
@@ -6,18 +11,13 @@ $nodes = explode("\n",$input);
 $allNodes = [];
 foreach($nodes as $node) {
     $words = array_values(array_map('trim', array_filter(explode(" ",$node))));
-    $allNodes[] = new Node(cleanName($words[0]),cleanNumber($words[1]),cleanNumber($words[2]));
+    $node = new Node(cleanName($words[0]),cleanNumber($words[1]),cleanNumber($words[2]));
+    $allNodes[$node->yCord][$node->xCord] = $node;
 }
-$combos = findCombos(range(0,(count($allNodes)-1)));
-$viablePair = 0;
-foreach($combos as $combo) {
-    $node1 = $allNodes[$combo[0]];
-    $node2 = $allNodes[$combo[1]];
-    if($node2->fitsNode($node1)) {
-        $viablePair++;
-    }
-}
-echo "viable pairs: $viablePair";
+
+$allNodes[TARGET_Y][TARGET_X]->findMoves($allNodes);
+
+displayNodes($allNodes,'avail');
 
 class Node
 {
@@ -25,6 +25,9 @@ class Node
     public $size;
     public $used;
     public $avail;
+    public $xCord;
+    public $yCord;
+    public $targetData = false;
 
     public function __construct($name,int $size,int $used)
     {
@@ -32,17 +35,83 @@ class Node
         $this->size = $size;
         $this->used = $used;
         $this->avail = $size - $used;
+        $this->calcCords();
     }
 
-    public function fitsNode(Node $node)
+    public function calcCords()
     {
-        if($node->used == 0) {
-            return false;
+        $pieces = explode('-',$this->name);
+        $this->xCord = substr($pieces[1],1);
+        $this->yCord = substr($pieces[2],1);
+        if($this->xCord == TARGET_X && $this->yCord == TARGET_Y) {
+            $this->targetData = true;
         }
-        if($node->used > $this->avail) {
+    }
+
+    public function fitsOnNode(Node $node)
+    {
+        if($this->used <= $node->avail) {
             return false;
         }
         return true;
+    }
+
+    public function addUsed($used)
+    {
+        $this->used += $used;
+        $this->avail = $this->size - $this->used;
+    }
+
+    public function setUsed($used)
+    {
+        $this->used = $used;
+        $this->avail = $this->size - $used;
+    }
+
+    public function moveData(Node $node)
+    {
+        if($this->fitsOnNode($node)) {
+            $node->addUsed($this->used);
+            $this->setUsed(0);
+            if ($this->targetData) {
+                $node->targetData = true;
+                $this->targetData = false;
+            }
+        }
+    }
+
+    /**
+     * @param Node[] $nodes
+     */
+    public function findConnected(array $nodes)
+    {
+        $connectedNodes = [];
+        if($this->xCord > 0)  $connectedNodes[] = $nodes[$this->yCord][($this->xCord - 1)];
+        if($this->xCord < MAX_X)  $connectedNodes[] = $nodes[$this->yCord][($this->xCord + 1)];
+
+        if($this->yCord > 0)  $connectedNodes[] = $nodes[($this->yCord - 1)][$this->xCord];
+        if($this->yCord < MAX_Y)  $connectedNodes[] = $nodes[($this->yCord + 1)][$this->xCord];
+
+        return $connectedNodes;
+    }
+
+    /**
+     * @param Node[] $nodes
+     */
+    public function findMoves(array $nodes)
+    {
+        $connectedNodes = $this->findConnected($nodes);
+        $canMoveNow = [];
+        $needsSpace = [];
+        foreach($connectedNodes as $node) {
+            if($this->fitsOnNode($node) && (!$this->targetData || $node->used == 0)) {
+                $canMoveNow[] = $node;
+            } else {
+                $needsSpace[] = $node;
+            }
+        }
+        var_dump($canMoveNow);
+        var_dump($needsSpace);
     }
 }
 
@@ -68,4 +137,17 @@ function findCombos($array)
         }
     }
     return $possibilities;
+}
+
+/**
+ * @param Node[] $nodes
+ */
+function displayNodes(array $nodes,$display='used')
+{
+    foreach($nodes as $yCord => $row) {
+        foreach($row as $node) {
+            echo sprintf('%1$03d',$node->$display) . ' ';
+        }
+        echo "\n";
+    }
 }
