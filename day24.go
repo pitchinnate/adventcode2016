@@ -29,7 +29,10 @@ func findBestOption(startLocation Location, remainingLocations []Location, grid 
 		fmt.Println("-------------------")
 	} else {
 		remainingLocations = findRoughDistance(startLocation,remainingLocations)
-		closestTwo := remainingLocations[0:2]
+		closestTwo := remainingLocations
+		if len(remainingLocations) > 2 {
+			closestTwo = remainingLocations[0:2]
+		}
 		closestLocations := findRealDistance(startLocation,closestTwo,grid)
 		for _,location := range closestLocations {
 			newLocations := findRemainingLocations(remainingLocations,[]Location{location})
@@ -72,7 +75,7 @@ func findPath(start Location, end *Location, path Path, grid [][]string, pathsFo
 		fmt.Printf("found a path to %s in %d steps \n",end.Name,(len(path.Steps) - 1))
 		if(end.RealDistance == 0 || end.RealDistance > len(path.Steps)) {
 			end.RealDistance = len(path.Steps) - 1
-			end.Distance = len(path.Steps) - 1
+			//end.Distance = len(path.Steps) - 1
 		}
 	} else {
 		if(len(path.Steps) < (end.Distance * 3) && *pathsFound < 5) {
@@ -109,6 +112,8 @@ func findPossibleMoves(currentLocation Location, grid [][]string, path Path) []L
 
 	if(len(moves) > 0) {
 		moves = findRemainingLocations(moves,path.Steps)
+		moves = findRoughDistance(currentLocation,moves)
+		sort.Sort(LocationSorter(moves))
 	}
 
 	return moves
