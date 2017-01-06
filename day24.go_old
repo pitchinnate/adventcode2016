@@ -1,0 +1,272 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+	"strconv"
+	"math"
+	"sort"
+	//"os"
+)
+
+func main() {
+	mapString := getMap()
+	grid := convertMap(mapString)
+	locations := findLocations(grid)
+	startLocation := findStartingLocation(locations)
+	var visitedLocations = []Location{startLocation}
+	remainingLocations := findRemainingLocations(locations,visitedLocations)
+	remainingLocations = findRoughDistance(startLocation,remainingLocations)
+	sort.Sort(LocationSorter(remainingLocations))
+	Options := Option{}
+	findBestOption(startLocation,remainingLocations,grid,&Options,0)
+	fmt.Println(Options)
+}
+
+func findBestOption(startLocation Location, remainingLocations []Location, grid [][]string,options *Option,steps int) {
+	fmt.Printf("Visit location %s have take %d steps so far \n",startLocation.Name, steps)
+	if len(remainingLocations) == 0 {
+		options.PathSteps = append(options.PathSteps,steps)
+		fmt.Println("-------------------")
+	} else {
+		remainingLocations = findRoughDistance(startLocation,remainingLocations)
+		sort.Sort(LocationSorter(remainingLocations))
+		closestTwo := remainingLocations
+		if len(remainingLocations) > 2 {
+			closestTwo = remainingLocations[0:2]
+		}
+		closestLocations := findRealDistance(startLocation,closestTwo,grid)
+		for _,location := range closestLocations {
+			newLocations := findRemainingLocations(remainingLocations,[]Location{location})
+			updatedSteps := steps + location.RealDistance
+			fmt.Printf("Taking %d steps to get to location %s \n",location.RealDistance, location.Name)
+			findBestOption(location,newLocations,grid,options,updatedSteps)
+		}
+	}
+}
+
+func findRealDistance(start Location, locations []Location, grid [][]string) []Location {
+	closestLocations := make([]Location,0)
+	minPath := 0
+	for i, location := range locations {
+		modifiedLocaiton := location
+		fmt.Printf("looking for shortest path to %s from %s \n",location.Name,start.Name)
+		pathsFound := 0
+		findPath(start, &modifiedLocaiton, Path{Steps: []Location{start}}, grid, &pathsFound)
+		locations[i] = modifiedLocaiton
+		if(len(closestLocations) == 0) {
+			closestLocations = append(closestLocations,modifiedLocaiton)
+			minPath = modifiedLocaiton.RealDistance
+		} else {
+			if(modifiedLocaiton.RealDistance == minPath) {
+				closestLocations = append(closestLocations,modifiedLocaiton)
+			}
+			if(modifiedLocaiton.RealDistance < minPath) {
+				minPath = modifiedLocaiton.RealDistance
+				closestLocations = closestLocations[0:1]
+				closestLocations[0] = modifiedLocaiton
+			}
+		}
+	}
+	return closestLocations
+}
+
+func findPath(start Location, end *Location, path Path, grid [][]string, pathsFound *int) {
+	if(start.X == end.X && start.Y == end.Y) {
+		*pathsFound++
+		fmt.Printf("found a path to %s in %d steps \n",end.Name,(len(path.Steps) - 1))
+		if(end.RealDistance == 0 || end.RealDistance > len(path.Steps)) {
+			end.RealDistance = len(path.Steps) - 1
+			//end.Distance = len(path.Steps) - 1
+		}
+	} else {
+		if(len(path.Steps) < (end.Distance * 2) && *pathsFound < 10) {
+			viableMoves := findPossibleMoves(start, grid, path, *end)
+			//if end.Name == "1" {
+			//	fmt.Println("--------------------")
+			//	fmt.Println(start)
+			//	fmt.Println(viableMoves);
+			//	if len(path.Steps) == 40 {
+			//		os.Exit(1)
+			//	}
+			//}
+			if (len(viableMoves) > 0) {
+				for _, location := range viableMoves {
+					newPath := path
+					newPath.Steps = append(newPath.Steps, location)
+					findPath(location, end, newPath, grid, pathsFound)
+				}
+			}
+		}
+	}
+}
+
+func findPossibleMoves(currentLocation Location, grid [][]string, path Path, end Location) []Location {
+	moves := make([]Location,0)
+	//check up
+	if grid[(currentLocation.Y - 1)][currentLocation.X] != "#" {
+		moves = append(moves,Location{X: currentLocation.X, Y: (currentLocation.Y - 1)})
+	}
+	//check down
+	if grid[(currentLocation.Y + 1)][currentLocation.X] != "#" {
+		moves = append(moves,Location{X: currentLocation.X,Y: (currentLocation.Y + 1)})
+	}
+	//check left
+	if grid[currentLocation.Y][(currentLocation.X - 1)] != "#" {
+		moves = append(moves,Location{X: (currentLocation.X - 1),Y: currentLocation.Y})
+	}
+	//check right
+	if grid[currentLocation.Y][(currentLocation.X + 1)] != "#" {
+		moves = append(moves,Location{X: (currentLocation.X + 1),Y: currentLocation.Y})
+	}
+
+	if(len(moves) > 0) {
+		moves = findRemainingLocations(moves,path.Steps)
+		moves = findRoughDistance(end,moves)
+		sort.Sort(LocationSorter(moves))
+	}
+
+	return moves
+}
+
+func findRoughDistance(start Location, locations []Location) []Location {
+	for index, location := range locations {
+		locations[index].Distance = int(math.Abs(float64(start.X - location.X))) + int(math.Abs(float64(start.Y - location.Y)))
+		locations[index].RealDistance = 0
+	}
+	return locations
+}
+
+func RemoveLocation(s []Location, index int) []Location {
+	return append(s[:index], s[index+1:]...)
+}
+
+func findRemainingLocations(locations []Location, visitedLocations []Location) []Location {
+	goodLocations := make([]Location, 0)
+	for _,location := range locations {
+		found := false
+		for _, visitedLocation := range visitedLocations {
+			if(location.X == visitedLocation.X && location.Y == visitedLocation.Y) {
+				found = true
+				break
+			}
+		}
+		if found == false {
+			goodLocations = append(goodLocations,location)
+		}
+	}
+	return goodLocations
+}
+
+func findStartingLocation(locations []Location) Location {
+	var foundLocation Location
+	for _, v := range locations {
+		if v.Name == "0" {
+			foundLocation = v
+			break
+		}
+	}
+	return foundLocation
+}
+
+func IsInteger(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func findLocations(grid [][]string) []Location {
+	locations := make([]Location,0)
+	for yCord, row := range grid {
+		for xCord, letter := range row {
+			if IsInteger(letter) {
+				locations = append(locations, Location{X: xCord, Y: yCord, Name: letter})
+			}
+		}
+	}
+	return locations
+}
+
+func convertMap(mapString string) [][]string {
+	rows := strings.Split(mapString,"\n")
+	grid := make([][]string,len(rows))
+	for i,v := range rows {
+		grid[i] = strings.Split(v,"")
+	}
+	return grid
+}
+
+func getMap() string {
+	grid := `###########
+#0.1.....2#
+#.#######.#
+#4.......3#
+###########`
+//	grid := `#####################################################################################################################################################################################
+//#.....#.........#.#...#.....#.............#.......#.....#.....#...........#...#.........#.#.#.....#.......#...............#..........3#.#.#.....#.......#...#.....#...#.#.#.....#...#
+//#.###.#.#.###.#.#.#.#.#.#.#.#.#.#####.#####.#.###.#.#.#######.###.#.#######.#.#.#.#.#.#.#.#.#.#####.#.#.###.#######.#.###.###.#.#.#.#.#.#.#.#.#.#.#.#.#####.#.###.#.#.#.#.###.#.###.#
+//#.......#.#...#...#.#...#...#.#...#...#.#...#.....#...#.#.....#.....#.....#.......#...#...#.................#.#.............#...#.....#.........#...#...#.#...#...#.....#.......#...#
+//#.#.#.###.#.#.###.#.#.#.#.###.#.###.###.#.#.#.#######.#.#####.#.#.#####.#.#.#.#####.#.###.#.#####.#####.#.###.###.###.#####.#.#.#.#.#.#.#.#.#.#.###.###.#.#.#.#.#####.#.#.#.#.#.#####
+//#..1#.......#...........#...#.........#.#.....#...#.#...#.........#...#...#...#.....#.#...#.#.#.....#...#.#.#...#.......#.........#.......#...#.#...#.....#.#.....#...#...#..2#.....#
+//#.#####.###.#.#.#.###.###.###.#####.#.#.#.#.###.#.#.#.#.#####.###.#.#.#####.#.#.#.#.#.#.###.#.#.#.#.#.#.#.#.#.#.#.#.#####.###.#.#.#####.###.###.#.#.#.###.#.#####.#.#.#.###.#.#.#.#.#
+//#...#.............#.#...#.#...#...#.#.#...#...#.............#.#.....#.........#.........#.#...#.#.#.#...#.......#.#.......#...#...#.#.......#...#.#.....#.........#.#.#.#.........#.#
+//#.#.#.###.###.#.#.#.#.#.#.#.#.#.#.#.###.###.###.#.#####.#.#.#.###.#.#.#.#####.#.#.###.#.#.#.#.#.###.#.#.#.#####.#####.###.#.#.#.#.#.#.#######.#.#.#.#.#.#.#######.#.#.#.#.###.#.#.#.#
+//#.......#...#.....#.....#.......#...#.....#.#.#.........#.......#.#.....#...#.#...#...#.#.....#...#.#...........#.........#...#.#.#...#.#.....#.....#.....#...........#...#.......#.#
+//#####.###.#.###########.###.#.###.###.###.#.#.#.###.#.###.###.#.#.#.#####.#.#.#.#########.#####.#.#.###.#.#.#.#.#.###.#.#.#.###.#.#####.#.#.#.#.#.#.#.#####.###.#####.###.#.#.#.#.#.#
+//#...#...#.......#.....#.....#.....#.....#.......#.#.#.....#...........#.....#.#.#.#.......#.....#.......#...........#.#...#...#.#.......#...#.....#...#.#...#.#...#...#.....#.....#.#
+//#.#.###.#.###.#.#####.#.#.#.#.#.#.###.#.###.###.#.#.#.###.#.#.#.###.#.#.###.#.#.#.#.#.#.#.###.#.#.#######.###.#######.#.###.###.#.###.#.#.#.###.###.#.#.#.#.#.#.#.#.###.#.#.###.#.#.#
+//#.....#...#.........#...#...#.#.#.........#.#.#...#.#...#.#...#.#.........#.....#.#...#.#...#...#.......#.....#...#...#.#.....#.......#.#...#...#.........#.#...#.#.........#.#...#.#
+//#.###.###########.#.###.#.#.#.#####.#.#.#.###.#.#.#.#####.#.###.#.#.#######.#####.#.#.#.#.###.#.#.###.#.#.#####.###.#.#.#.#.#.#########.###.#.#.#.#.#.###.#.#.#.#.#.#.#.#.#.#.#####.#
+//#.#.................#.............#...#...#.#.#.#...#...#...#.....#.......#.#.#...#...........#.........#.......#.........#...#...#...#.........#.#...#...#.........#.........#...#.#
+//#.#.#.#####.#######.###.###.###.#.#######.#.#.###.###.#.#.#.#####.#####.###.#.#.#.#.###.#.###.#.#.#####.#.#.#.#.#.#.###.#.#.#.#.#.#.#.#.###.###.#######.###.#.#.#.#.#.#.###.#.#.#.#.#
+//#...#.#.#...................#0............#...........#.#.....#.#.....#.#.........#.....#.......#.......#.....#.......#.#...#.......#.#.#...#.............#...#.....#.#.......#...#6#
+//#.#.#.#.#.###.#.#.#.#.#####.###.#.#.#####.#####.###.#.###.###.#.#.#.#.#.#.#####.#.#.#.#.#.#####.#.###.#.#####.#.#####.#.#.#.#.#####.#.#.#.#.#.#.#.#########.#.###.###.#######.#.#.###
+//#.#...#.#.......#.#.#.#.....#...#...#.#...#...#.#...#.........#...#...#...#.....#.....#.....#...#.....#.......#.....#...#...#.#.....#.#...#.#.#.#.#.......#...#.......#...#...#...#.#
+//#.###.#.###.#.#.#.#.#.###.#.#.#.###.#.###.#.#.#.#.###.#.#.#.#.#.#.#####.#.#####.#.#####.#.#.#.###.#.#############.###.###.###.###########.#.###.#.#.#.###.#.###.###.#.#.#.#.#.#.###.#
+//#.....#.#...#...#...#...#.#.#.........#.....#...#...#.#.....#...#.#...........#.#.......#...#.#.......#.#...#.........#...#...#.#.#.....#...#.#.#.#.......#...........#...#.#.......#
+//#.#.#####.#.###########.#.#.#.#############.#.#.#.#.#######.#######.###.#.###.###.###.#######.#.###.#.#.#.#.#######.###.###.###.#.#.#.#.#.#.#.#.#.#.###.#.#######.###.###.#.#.#.#####
+//#...#.#.......#.................#.#.........#.....#.#.#.....#...#.....#.......#...#...#.......#.#...#.#.#...#...........#.#.#.....#.#.........#...#.#...........#...#.....#...#.#...#
+//###.#.#.#.###.#.#.#.#.#.#.###.#.#.#.#.#.#.###.#.#.#.#.#.#.#.###.#.###.#.###.###.#.#####.#####.###.#.#.#.#######.#.#.#.#.#.#.#.###.#.#.###.#.#.###.#.#.#####.#.#.#.###.#.#.###.#.#.#.#
+//#...#...#.....#.#.#...#...#...#...#.............#.....#...#.#.#...#.............#.#.............#...#.#.#...#.#.#...#.#...#.#.#.......#.#.......#...#.#.....#...#...#.#...#.#...#...#
+//#.#.#.#.#.#####.#.#.#.#.#.#.#######.###.#######.#.###.#.###.#.#.#.###.#.#.###.#.#.#.#.#.#.#.###.###.#.###.###.###.###.###.###.###.#####.#######.###.#.###.#.#.###.#.#.#.###.###.#.#.#
+//#...#.#.#.......#.#.#...#...........#.........#.#.#...#.#.#.#.#.#.............#...#...#...#.....#.......#...#.#...#...#...#...#.........#...#...#.....#.#.....#.#.#...#...#.#...#...#
+//###.#.#.#.###.###.###.#.#####.#.#.#.#.#.#####.###.#.###.#.#.#.#.###.#.###.###.###.#.#.#.###.###.###.###.###.###.#.#.###.#.#.#.#.###.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#.###.#.###.###.#
+//#...#...#.#...#...#.#.#.......#...#...#.#.......#.......#.#.....#.........#...........#.....#...#...#.......#...........#...#...#.#.#...#.......#...#.....#.....#.#....5#.....#.....#
+//#.#.#.#####.#.#.#.#.###.#.#.#.###.#.#.###.#####.#.#.#.#.###.#.#.#.#.#.#.#.#.#.#.#.###############.#.###.#.#.#.###.###.#.#.#.#.###.#.#.###.#####.#.#.#####.###.###.#.#.#.###.#.#.#.#.#
+//#.........#.#...#.....#...#.#.#...#.....#...#.....#.....#...#.#.#...#.#.....#...#.............#...#.#.....#.#.....#...........#...#.............#...#...#.#...#...#.#.......#...#...#
+//#.#.#.#.#.#.###.#####.###.#.#.#.#.#.###.#.###.#.###.#.#.#.#.#.###.#.#.#.#####.#.#####.#####.###.#.#.#.#############.#####.#.###.#.###.#.#.#.#.#####.#.#.#.#.#.#.#.#.#.#.#.#.#.#######
+//#4#.#.....#.#.....#...#...#...#...#...#.#.#...#...#...#.#.....#...#...#.........#...#.#.....#...#.#...#.#.....#.#.#...#...#.#...#.#.......#.#.......#...#.......#.#.#.#.#.........#.#
+//#####.#.###.###.###.#####.###.#.#.###.#.#.#.#.#.#.#.#.#####.#.#.#.#.###.#.#.#.#.#.#.#.#.#.###.#.#.###.#.#.#.#.#.#.###.#.#.###.#.#.###.#.#.#.###.###.#.#.#.#.#####.#.###.#.#####.###.#
+//#.......#...#...#...#.#.#.........#...#.#7#.#...#...#.......#.#.#.#.....#.#.....#.....#.....#...#.#.#.#...........#...#.....#.............#...............#.....#.........#...#.....#
+//#####################################################################################################################################################################################`
+	return grid
+}
+
+type Option struct {
+	PathSteps []int
+}
+
+type Path struct {
+	Steps []Location
+}
+
+type Location struct {
+	X int
+	Y int
+	Name string
+	Distance int
+	RealDistance int
+}
+
+type LocationSorter []Location
+
+func (locations LocationSorter) Len() int {
+	return len(locations)
+}
+
+func (locations LocationSorter) Less(i, j int) bool {
+	return locations[i].Distance < locations[j].Distance
+}
+
+func (locations LocationSorter) Swap(i, j int) {
+	locations[i], locations[j] = locations[j], locations[i]
+}
