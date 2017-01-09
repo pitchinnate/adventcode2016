@@ -15,9 +15,9 @@ foreach($nodes as $node) {
     $allNodes[$node->yCord][$node->xCord] = $node;
 }
 
-$allNodes[TARGET_Y][TARGET_X]->findMoves($allNodes);
+//$allNodes = $allNodes[TARGET_Y][TARGET_X]->findMoves($allNodes);
 
-displayNodes($allNodes,'avail');
+displayNodes($allNodes,'used');
 
 class Node
 {
@@ -78,6 +78,7 @@ class Node
                 $this->targetData = false;
             }
         }
+        return $node;
     }
 
     /**
@@ -101,6 +102,8 @@ class Node
     public function findMoves(array $nodes)
     {
         $connectedNodes = $this->findConnected($nodes);
+        /** @var Node[] $canMoveNow */
+        /** @var Node[] $needsSpace */
         $canMoveNow = [];
         $needsSpace = [];
         foreach($connectedNodes as $node) {
@@ -110,8 +113,12 @@ class Node
                 $needsSpace[] = $node;
             }
         }
-        var_dump($canMoveNow);
-        var_dump($needsSpace);
+        if(count($canMoveNow) > 0) {
+            $modifiedNode = $this->moveData($canMoveNow[0]);
+            $nodes[$this->yCord][$this->xCord] = $this;
+            $nodes[$modifiedNode->yCord][$modifiedNode->xCord] = $modifiedNode;
+        }
+        return $nodes;
     }
 }
 
@@ -146,7 +153,8 @@ function displayNodes(array $nodes,$display='used')
 {
     foreach($nodes as $yCord => $row) {
         foreach($row as $node) {
-            echo sprintf('%1$03d',$node->$display) . ' ';
+            //echo sprintf('%1$03d',$node->$display) . ' ';
+            echo sprintf('%1$03d',$node->used) . '|'. sprintf('%1$03d',$node->avail) . '|'. sprintf('%1$03d',$node->size) . ' ';
         }
         echo "\n";
     }

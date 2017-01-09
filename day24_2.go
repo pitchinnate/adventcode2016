@@ -59,7 +59,7 @@ func FindOptions(start Location, locations []Location) []Option {
 	mathutil.PermutationFirst(data)
 	locationNames := data
 	locationNames = append([]string{start.Name},locationNames...)
-	locationNames = append(locationNames,start.Name)
+	//locationNames = append(locationNames,start.Name)
 	options = append(options,Option{Locations: locationNames})
 
 	for {
@@ -68,7 +68,7 @@ func FindOptions(start Location, locations []Location) []Option {
 		}
 		locationNames := data
 		locationNames = append([]string{start.Name},locationNames...)
-		locationNames = append(locationNames,start.Name)
+		//locationNames = append(locationNames,start.Name)
 		options = append(options,Option{Locations: locationNames})
 	}
 
@@ -87,9 +87,9 @@ func findDistances(locations [] Location, grid [][]string) [] Location {
 			endLocation := locations[j]
 			roughDistance := findRoughDistance(startLocation,endLocation)
 			fmt.Printf("Going from %s to %s rough distance is %d \n",startLocation.Name,endLocation.Name,roughDistance)
-			mapString := getMap()
-			newGrid := convertMap(mapString)
-			distance := findBestPath(startLocation,endLocation,newGrid)
+			//mapString := getMap()
+			//newGrid := convertMap(mapString)
+			distance := findBestPath(startLocation,endLocation,grid)
 			fmt.Printf("Shortest path found was %d steps \n",distance)
 			locations[i].Distances = append(locations[i].Distances, Distance{Name: endLocation.Name, Distance: distance})
 			locations[j].Distances = append(locations[j].Distances, Distance{Name: startLocation.Name, Distance: distance})
@@ -106,7 +106,13 @@ type Step struct {
 func findBestPath(start Location, end Location, grid [][]string) int {
 	startStep := Step{start,0}
 	queue := []Step{startStep}
-	grid[start.Y][start.X] = "#"
+
+	newGrid := make([][]string,len(grid))
+	for i,v := range grid {
+		newGrid[i] = make([]string,len(v))
+		copy(newGrid[i],grid[i])
+	}
+	newGrid[start.Y][start.X] = "#"
 
 	path := []Location{start}
 	shortestPath := 10000
@@ -120,12 +126,12 @@ func findBestPath(start Location, end Location, grid [][]string) int {
 			return processStep.StepCount
 		}
 
-		viableMoves := findNeighbors(processStep.Location, grid)
+		viableMoves := findNeighbors(processStep.Location, newGrid)
 		if (len(viableMoves) > 0) {
 			for _, location := range viableMoves {
 				path = append(path,location)
 				queue = append(queue,Step{location,(processStep.StepCount + 1)})
-				grid[location.Y][location.X] = "#"
+				newGrid[location.Y][location.X] = "#"
 			}
 		}
 		queueLength = len(queue)
