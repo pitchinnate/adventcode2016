@@ -59,7 +59,7 @@ func FindOptions(start Location, locations []Location) []Option {
 	mathutil.PermutationFirst(data)
 	locationNames := data
 	locationNames = append([]string{start.Name},locationNames...)
-	//locationNames = append(locationNames,start.Name)
+	locationNames = append(locationNames,start.Name)
 	options = append(options,Option{Locations: locationNames})
 
 	for {
@@ -68,7 +68,7 @@ func FindOptions(start Location, locations []Location) []Option {
 		}
 		locationNames := data
 		locationNames = append([]string{start.Name},locationNames...)
-		//locationNames = append(locationNames,start.Name)
+		locationNames = append(locationNames,start.Name)
 		options = append(options,Option{Locations: locationNames})
 	}
 
